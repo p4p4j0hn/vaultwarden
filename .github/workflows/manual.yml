@@ -1,36 +1,12 @@
-name: Release
+name: Manual Image Build
 
 on:
-  push:
-    branches:
-      - main
-
-    tags:
-      - "*"
+  workflow_dispatch:
 
 jobs:
-  # https://github.com/marketplace/actions/skip-duplicate-actions
-  # Some checks to determine if we need to continue with building a new docker.
-  # We will skip this check if we are creating a tag, because that has the same hash as a previous run already.
-  skip_check:
-    runs-on: ubuntu-24.04
-    if: ${{ github.repository == 'p4p4j0hn/vaultwarden' }}
-    outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - name: Skip Duplicates Actions
-        id: skip_check
-        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
-        with:
-          cancel_others: "true"
-        # Only run this when not creating a tag
-        if: ${{ github.ref_type == 'branch' }}
-
   docker-build:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
-    needs: skip_check
-    if: ${{ needs.skip_check.outputs.should_skip != 'true' && github.repository == 'p4p4j0hn/vaultwarden' }}
     # Start a local docker registry to extract the final Alpine static build binaries
     services:
       registry:

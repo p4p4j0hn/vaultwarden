@@ -11,6 +11,7 @@ data
 
 # Environment file
 .env
+.envrc
 
 # Web vault
 web-vault
