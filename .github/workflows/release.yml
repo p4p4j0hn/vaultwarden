@@ -175,7 +175,7 @@ jobs:
           pull: true
           push: true
           files: docker/docker-bake.hcl
-          targets: "${{ matrix.base_image }}-amd64"
+          targets: "${{ matrix.base_image }}-multi"
           set: |
             *.cache-from=${{ env.BAKE_CACHE_FROM }}
             *.cache-to=${{ env.BAKE_CACHE_TO }}
