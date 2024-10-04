@@ -86,7 +86,7 @@ ARG DB=sqlite,mysql,postgresql,enable_mimalloc
 # dummy project, except the target folder
 # This folder contains the compiled dependencies
 RUN source /env-cargo && \
-    cargo build --features ${DB} --profile "${CARGO_PROFILE}" --target="${CARGO_TARGET}" && \
+    cargo build -j 1 --features ${DB} --profile "${CARGO_PROFILE}" --target="${CARGO_TARGET}" && \
     find . -not -path "./target*" -delete
 
 # Copies the complete project
@@ -101,7 +101,7 @@ RUN source /env-cargo && \
     # Also do this for build.rs to ensure the version is rechecked
     touch build.rs src/main.rs && \
     # Create a symlink to the binary target folder to easy copy the binary in the final stage
-    cargo build --features ${DB} --profile "${CARGO_PROFILE}" --target="${CARGO_TARGET}" && \
+    cargo build -j 1 --features ${DB} --profile "${CARGO_PROFILE}" --target="${CARGO_TARGET}" && \
     if [[ "${CARGO_PROFILE}" == "dev" ]] ; then \
         ln -vfsr "/app/target/${CARGO_TARGET}/debug" /app/target/final ; \
     else \
