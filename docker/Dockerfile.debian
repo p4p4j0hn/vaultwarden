@@ -36,7 +36,7 @@ FROM --platform=linux/amd64 docker.io/tonistiigi/xx@sha256:1978e7a58a1777cb0ef0d
 
 ########################## BUILD IMAGE ##########################
 # hadolint ignore=DL3006
-FROM --platform=$BUILDPLATFORM docker.io/library/rust:1.81.0-slim-bookworm AS build
+FROM --platform=$BUILDPLATFORM docker.io/library/rust:1.81.0-slim-bullseye AS build
 COPY --from=xx / /
 ARG TARGETARCH
 ARG TARGETVARIANT
@@ -56,7 +56,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Install pkg-config to allow amd64 builds to find all libraries
 # Install git so build.rs can determine the correct version
 # Install the libc cross packages based upon the debian-arch
-RUN apt-get update && \
+# Cache the apt packages
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update && \
     apt-get install -y \
         --no-install-recommends \
         clang \
@@ -165,7 +169,7 @@ RUN source /env-cargo && \
 # To uninstall: docker run --privileged --rm tonistiigi/binfmt --uninstall 'qemu-*'
 #
 # We need to add `--platform` here, because of a podman bug: https://github.com/containers/buildah/issues/4742
-FROM --platform=$TARGETPLATFORM docker.io/library/debian:bookworm-slim
+FROM --platform=$TARGETPLATFORM docker.io/library/debian:bullseye-slim
 
 ENV ROCKET_PROFILE="release" \
     ROCKET_ADDRESS=0.0.0.0 \

@@ -74,7 +74,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Install pkg-config to allow amd64 builds to find all libraries
 # Install git so build.rs can determine the correct version
 # Install the libc cross packages based upon the debian-arch
-RUN apt-get update && \
+# Cache the apt packages
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update && \
     apt-get install -y \
         --no-install-recommends \
         clang \

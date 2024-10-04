@@ -6,10 +6,10 @@ vault_image_digest: "sha256:409ab328ca931439cb916b388a4bb784bd44220717aaf74cf716
 # https://github.com/tonistiigi/xx | https://hub.docker.com/r/tonistiigi/xx/tags
 xx_image_digest: "sha256:1978e7a58a1777cb0ef0dde76bad60b7914b21da57cfa88047875e4f364297aa"
 rust_version: 1.81.0 # Rust version to be used
-debian_version: bookworm # Debian release name to be used
+debian_version: bullseye # Debian release name to be used
 alpine_version: "3.20" # Alpine version to be used
 # For which platforms/architectures will we try to build images
-platforms: ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
+platforms: ["linux/amd64", "linux/arm64", "linux/arm/v7"] # No Arm V6 image for bullseye "linux/arm/v6"
 # Determine the build images per OS/Arch
 build_stage_image:
   debian:
@@ -22,7 +22,7 @@ build_stage_image:
       amd64: "ghcr.io/blackdex/rust-musl:x86_64-musl-stable-{{rust_version}}"
       arm64: "ghcr.io/blackdex/rust-musl:aarch64-musl-stable-{{rust_version}}"
       armv7: "ghcr.io/blackdex/rust-musl:armv7-musleabihf-stable-{{rust_version}}"
-      armv6: "ghcr.io/blackdex/rust-musl:arm-musleabi-stable-{{rust_version}}"
+      # armv6: "ghcr.io/blackdex/rust-musl:arm-musleabi-stable-{{rust_version}}"
 # The final image which will be used to distribute the container images
 runtime_stage_image:
   debian: "docker.io/library/debian:{{debian_version}}-slim"

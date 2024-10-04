@@ -95,7 +95,7 @@ target "debian" {
 // This is mainly used by GitHub Actions to build and push new containers
 target "debian-multi" {
   inherits = ["debian"]
-  platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
+  platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7"] // bullseye doesn't have armv6 , "linux/arm/v6"
   tags = generate_tags("", "")
   output = [join(",", flatten([["type=registry"], image_index_annotations()]))]
 }
@@ -119,11 +119,11 @@ target "debian-armv7" {
   tags = generate_tags("", "-armv7")
 }
 
-target "debian-armv6" {
-  inherits = ["debian"]
-  platforms = ["linux/arm/v6"]
-  tags = generate_tags("", "-armv6")
-}
+// target "debian-armv6" {
+//   inherits = ["debian"]
+//   platforms = ["linux/arm/v6"]
+//   tags = generate_tags("", "-armv6")
+// }
 
 // ==== Start of unsupported Debian architecture targets ===
 // These are provided just to help users build for these rare platforms
@@ -161,7 +161,7 @@ target "debian-s390x" {
 
 // A Group to build all platforms individually for local testing
 group "debian-all" {
-  targets = ["debian-amd64", "debian-arm64", "debian-armv7", "debian-armv6"]
+  targets = ["debian-amd64", "debian-arm64", "debian-armv7"] // , "debian-armv6"
 }
 
 
@@ -179,7 +179,7 @@ target "alpine" {
 // This is mainly used by GitHub Actions to build and push new containers
 target "alpine-multi" {
   inherits = ["alpine"]
-  platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
+  platforms = ["linux/amd64", "linux/arm64", "linux/arm/v7"] //, "linux/arm/v6"
   tags = generate_tags("-alpine", "")
   output = [join(",", flatten([["type=registry"], image_index_annotations()]))]
 }
@@ -203,15 +203,15 @@ target "alpine-armv7" {
   tags = generate_tags("-alpine", "-armv7")
 }
 
-target "alpine-armv6" {
-  inherits = ["alpine"]
-  platforms = ["linux/arm/v6"]
-  tags = generate_tags("-alpine", "-armv6")
-}
+// target "alpine-armv6" {
+//   inherits = ["alpine"]
+//   platforms = ["linux/arm/v6"]
+//   tags = generate_tags("-alpine", "-armv6")
+// }
 
 // A Group to build all platforms individually for local testing
 group "alpine-all" {
-  targets = ["alpine-amd64", "alpine-arm64", "alpine-armv7", "alpine-armv6"]
+  targets = ["alpine-amd64", "alpine-arm64", "alpine-armv7"] // , "alpine-armv6"
 }
 
 
