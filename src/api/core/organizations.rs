@@ -11,7 +11,6 @@ use crate::{
     },
     auth::{decode_invite, AdminHeaders, ClientVersion, Headers, ManagerHeaders, ManagerHeadersLoose, OwnerHeaders},
     db::{models::*, DbConn},
-    error::Error,
     mail,
     util::{convert_json_key_lcase_first, NumberOrString},
     CONFIG,
@@ -127,6 +126,7 @@ struct NewCollectionData {
     name: String,
     groups: Vec<NewCollectionObjectData>,
     users: Vec<NewCollectionObjectData>,
+    id: Option<String>,
     external_id: Option<String>,
 }
 
@@ -1598,40 +1598,43 @@ async fn post_org_import(
     // TODO: See if we can optimize the whole cipher adding/importing and prevent duplicate code and checks.
     Cipher::validate_cipher_data(&data.ciphers)?;
 
-    let mut collections = Vec::new();
+    let existing_collections: HashSet<Option<String>> =
+        Collection::find_by_organization(&org_id, &mut conn).await.into_iter().map(|c| (Some(c.uuid))).collect();
+    let mut collections: Vec<String> = Vec::with_capacity(data.collections.len());
     for coll in data.collections {
-        let collection = Collection::new(org_id.clone(), coll.name, coll.external_id);
-        if collection.save(&mut conn).await.is_err() {
-            collections.push(Err(Error::new("Failed to create Collection", "Failed to create Collection")));
+        let collection_uuid = if existing_collections.contains(&coll.id) {
+            coll.id.unwrap()
         } else {
-            collections.push(Ok(collection));
-        }
+            let new_collection = Collection::new(org_id.clone(), coll.name, coll.external_id);
+            new_collection.save(&mut conn).await?;
+            new_collection.uuid
+        };
+
+        collections.push(collection_uuid);
     }
 
     // Read the relations between collections and ciphers
-    let mut relations = Vec::new();
+    // Ciphers can be in multiple collections at the same time
+    let mut relations = Vec::with_capacity(data.collection_relationships.len());
     for relation in data.collection_relationships {
         relations.push((relation.key, relation.value));
     }
 
     let headers: Headers = headers.into();
 
-    let mut ciphers = Vec::new();
-    for cipher_data in data.ciphers {
+    let mut ciphers: Vec<String> = Vec::with_capacity(data.ciphers.len());
+    for mut cipher_data in data.ciphers {
+        // Always clear folder_id's via an organization import
+        cipher_data.folder_id = None;
         let mut cipher = Cipher::new(cipher_data.r#type, cipher_data.name.clone());
         update_cipher_from_data(&mut cipher, cipher_data, &headers, None, &mut conn, &nt, UpdateType::None).await.ok();
-        ciphers.push(cipher);
+        ciphers.push(cipher.uuid);
     }
 
     // Assign the collections
     for (cipher_index, coll_index) in relations {
-        let cipher_id = &ciphers[cipher_index].uuid;
-        let coll = &collections[coll_index];
-        let coll_id = match coll {
-            Ok(coll) => coll.uuid.as_str(),
-            Err(_) => err!("Failed to assign to collection"),
-        };
-
+        let cipher_id = &ciphers[cipher_index];
+        let coll_id = &collections[coll_index];
         CollectionCipher::save(cipher_id, coll_id, &mut conn).await?;
     }
 
@@ -1649,7 +1652,7 @@ struct BulkCollectionsData {
     remove_collections: bool,
 }
 
-// This endpoint is only reachable via the organization view, therefor this endpoint is located here
+// This endpoint is only reachable via the organization view, therefore this endpoint is located here
 // Also Bitwarden does not send out Notifications for these changes, it only does this for individual cipher collection updates
 #[post("/ciphers/bulk-collections", data = "<data>")]
 async fn post_bulk_collections(data: Json<BulkCollectionsData>, headers: Headers, mut conn: DbConn) -> EmptyResult {
@@ -2786,7 +2789,7 @@ struct OrganizationUserResetPasswordRequest {
     key: String,
 }
 
-// Upstrem reports this is the renamed endpoint instead of `/keys`
+// Upstream reports this is the renamed endpoint instead of `/keys`
 // But the clients do not seem to use this at all
 // Just add it here in case they will
 #[get("/organizations/<org_id>/public-key")]
