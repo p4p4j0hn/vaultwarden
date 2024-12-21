@@ -62,6 +62,7 @@ pub fn routes() -> Vec<Route> {
         diagnostics,
         get_diagnostics_config,
         resend_user_invite,
+        get_diagnostics_http,
     ]
 }
 
@@ -494,11 +495,11 @@ struct UserOrgTypeData {
 async fn update_user_org_type(data: Json<UserOrgTypeData>, token: AdminToken, mut conn: DbConn) -> EmptyResult {
     let data: UserOrgTypeData = data.into_inner();
 
-    let mut user_to_edit =
-        match UserOrganization::find_by_user_and_org(&data.user_uuid, &data.org_uuid, &mut conn).await {
-            Some(user) => user,
-            None => err!("The specified user isn't member of the organization"),
-        };
+    let Some(mut user_to_edit) =
+        UserOrganization::find_by_user_and_org(&data.user_uuid, &data.org_uuid, &mut conn).await
+    else {
+        err!("The specified user isn't member of the organization")
+    };
 
     let new_type = match UserOrgType::from_str(&data.user_type.into_string()) {
         Some(new_type) => new_type as i32,
@@ -601,9 +602,8 @@ async fn get_json_api<T: DeserializeOwned>(url: &str) -> Result<T, Error> {
 }
 
 async fn has_http_access() -> bool {
-    let req = match make_http_request(Method::HEAD, "https://github.com/dani-garcia/vaultwarden") {
-        Ok(r) => r,
-        Err(_) => return false,
+    let Ok(req) = make_http_request(Method::HEAD, "https://github.com/dani-garcia/vaultwarden") else {
+        return false;
     };
     match req.send().await {
         Ok(r) => r.status().is_success(),
@@ -713,6 +713,7 @@ async fn diagnostics(_token: AdminToken, ip_header: IpHeader, mut conn: DbConn) 
         "ip_header_name": ip_header_name,
         "ip_header_config": &CONFIG.ip_header(),
         "uses_proxy": uses_proxy,
+        "enable_websocket": &CONFIG.enable_websocket(),
         "db_type": *DB_TYPE,
         "db_version": get_sql_server_version(&mut conn).await,
         "admin_url": format!("{}/diagnostics", admin_url()),
@@ -732,6 +733,11 @@ async fn diagnostics(_token: AdminToken, ip_header: IpHeader, mut conn: DbConn) 
 fn get_diagnostics_config(_token: AdminToken) -> Json<Value> {
     let support_json = CONFIG.get_support_json();
     Json(support_json)
+}
+
+#[get("/diagnostics/http?<code>")]
+fn get_diagnostics_http(code: u16, _token: AdminToken) -> EmptyResult {
+    err_code!(format!("Testing error {code} response"), code);
 }
 
 #[post("/config", data = "<data>")]
